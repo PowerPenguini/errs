@@ -1,3 +1,3 @@
-module github.com/powerpenguini/errs
+module github.com/PowerPenguini/errs
 
 go 1.24.6
