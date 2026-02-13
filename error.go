@@ -11,6 +11,7 @@ const ForbiddenType = "FORBIDDEN"
 
 type Error struct {
 	Code    string
+	Field   string
 	Message string
 	Type    string
 	Err     error
@@ -27,6 +28,16 @@ func (e *Error) Unwrap() error {
 func NewError(code, msg, typ string, err error) *Error {
 	return &Error{
 		Code:    code,
+		Message: msg,
+		Type:    typ,
+		Err:     err,
+	}
+}
+
+func NewFieldError(code, field, msg, typ string, err error) *Error {
+	return &Error{
+		Code:    code,
+		Field:   field,
 		Message: msg,
 		Type:    typ,
 		Err:     err,

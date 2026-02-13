@@ -25,18 +25,22 @@ func WriteError(w http.ResponseWriter, err error) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
 
-		payload := make([]map[string]string, 0, len(list.Errors))
+		payload := make([]map[string]any, 0, len(list.Errors))
 		for _, item := range list.Errors {
 			if item == nil {
 				continue
 			}
-			payload = append(payload, map[string]string{
+			entry := map[string]any{
 				"error":   item.Code,
 				"message": item.Message,
-			})
+			}
+			if item.Field != "" {
+				entry["field"] = item.Field
+			}
+			payload = append(payload, entry)
 		}
 		if len(payload) == 0 {
-			payload = append(payload, map[string]string{
+			payload = append(payload, map[string]any{
 				"error":   "unknown_error",
 				"message": "unknown error",
 			})
@@ -67,10 +71,14 @@ func WriteError(w http.ResponseWriter, err error) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
-		json.NewEncoder(w).Encode(map[string]string{
+		payload := map[string]any{
 			"error":   e.Code,
 			"message": e.Message,
-		})
+		}
+		if e.Field != "" {
+			payload["field"] = e.Field
+		}
+		json.NewEncoder(w).Encode(payload)
 		return
 	}
 	w.WriteHeader(http.StatusInternalServerError)
