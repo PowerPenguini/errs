@@ -2,13 +2,15 @@ package errs
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 )
 
 func WriteError(w http.ResponseWriter, err error) {
 	var list *ErrorList
-	if errors.As(err, &list) && list != nil && list.Len() > 0 {
+	if first := firstTypedError(err); first != nil {
+		list, _ = first.(*ErrorList)
+	}
+	if list != nil && list.Len() > 0 {
 		status := http.StatusBadRequest
 		for _, item := range list.Errors {
 			if item == nil {
@@ -53,7 +55,10 @@ func WriteError(w http.ResponseWriter, err error) {
 	}
 
 	var e *Error
-	if errors.As(err, &e) {
+	if first := firstTypedError(err); first != nil {
+		e, _ = first.(*Error)
+	}
+	if e != nil {
 		status := http.StatusInternalServerError
 		switch e.Type {
 		case ValidationType:
@@ -81,9 +86,27 @@ func WriteError(w http.ResponseWriter, err error) {
 		json.NewEncoder(w).Encode(payload)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusInternalServerError)
 	json.NewEncoder(w).Encode(map[string]string{
 		"error":   "unknown_error",
-		"message": err.Error(),
+		"message": "internal server error",
 	})
+}
+
+// Stop at the first typed boundary. A cause cannot override its parent's status.
+func firstTypedError(err error) error {
+	switch value := err.(type) {
+	case *Error, *ErrorList:
+		return err
+	case interface{ Unwrap() error }:
+		return firstTypedError(value.Unwrap())
+	case interface{ Unwrap() []error }:
+		for _, cause := range value.Unwrap() {
+			if typed := firstTypedError(cause); typed != nil {
+				return typed
+			}
+		}
+	}
+	return nil
 }
